@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Protocolo Insulinoterapia Hospitalaria - Bulnes</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background-color: #f4f4f9; }
+        .container { max-width: 800px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); }
+        h1 { color: #880000; text-align: center; } /* Rojo similar al logo */
+        h2 { border-bottom: 2px solid #ccc; padding-bottom: 5px; margin-top: 20px; color: #444; }
+        .question-group { margin-bottom: 15px; padding: 10px; border: 1px solid #eee; border-radius: 4px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input[type="number"], select { width: 100%; padding: 8px; margin-top: 5px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
+        button { background-color: #007bff; color: white; padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; margin-top: 10px; width: 100%; font-size: 1.1em; }
+        button:hover { background-color: #0056b3; }
+        #resultado { margin-top: 30px; padding: 20px; border: 2px solid #28a745; border-radius: 6px; background-color: #e9f7ee; }
+        #resultado h3 { color: #28a745; margin-top: 0; }
+        .alert { color: #880000; font-weight: bold; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    [cite_start]<h1>Protocolo Integrado de Insulinoterapia Hospitalaria [cite: 1]</h1>
+    [cite_start]<p style="text-align: center;">Hospital de Bulnes – Servicios de Medicina (Octubre 2025) [cite: 2]</p>
+
+    <h2>1. Datos del Paciente</h2>
+
+    <div class="question-group">
+        <label for="glicemia_ingreso">Glicemia Capilar (HGT) al ingreso (mg/dL):</label>
+        <input type="number" id="glicemia_ingreso" value="180">
+    </div>
+
+    <div class="question-group">
+        <label for="peso">Peso (kg):</label>
+        <input type="number" id="peso" value="70">
+    </div>
+
+    <div class="question-group">
+        <label for="hba1c">HbA1c (%):</label>
+        <input type="number" id="hba1c" value="7.5" step="0.1">
+    </div>
+
+    <div class="question-group">
+        <label for="imc">IMC:</label>
+        <input type="number" id="imc" value="28" step="0.1">
+    </div>
+    
+    <div class="question-group">
+        <label for="tipo_dm">¿El paciente tiene Diabetes Tipo 1 (DM1)?</label>
+        <select id="tipo_dm">
+            <option value="no">No</option>
+            [cite_start]<option value="si">Sí (Obligatorio Basal + Bolo [cite: 51])</option>
+        </select>
+    </div>
+
+    <div class="question-group">
+        <label for="insulina_previa">¿Uso previo de insulina basal (>1 dosis/día o NPH >0.5 U/kg)?</label>
+        <select id="insulina_previa">
+            <option value="no">No</option>
+            [cite_start]<option value="alto">Sí (>1 dosis/día o NPH >0.5 U/kg) [cite: 26, 74]</option>
+        </select>
+    </div>
+
+    <div class="question-group">
+        <label>Condiciones de Insulinoresistencia / Inestabilidad:</label>
+        [cite_start]<input type="checkbox" id="corticoides"> Corticoides activos [cite: 24]
+        [cite_start]<input type="checkbox" id="sepsis"> Infección o sepsis activa [cite: 25]
+        [cite_start]<input type="checkbox" id="erc_avanzada"> ERC avanzada (VFG <30) [cite: 14]
+    </div>
+
+    <button onclick="determinarEsquema()">Determinar Esquema y Dosis</button>
+
+    <div id="resultado" style="display:none;">
+        <h3>Resultado del Protocolo</h3>
+        <p><strong>Perfil de Insulinosensibilidad:</strong> <span id="perfil_resultado"></span></p>
+        <p><strong>Esquema Recomendado:</strong> <span id="esquema_resultado"></span></p>
+        <p><strong>Indicación Inicial:</strong> <span id="dosis_resultado"></span></p>
+        [cite_start]<p class="alert">Recuerde siempre reevaluar según progresión clínica (Algoritmo de Transición)[cite: 8, 69].</p>
+    </div>
+</div>
+
+<script>
+    function determinarEsquema() {
+        // --- 1. Obtención de Datos ---
+        const glicemiaIngreso = parseFloat(document.getElementById('glicemia_ingreso').value);
+        const peso = parseFloat(document.getElementById('peso').value);
+        const hba1c = parseFloat(document.getElementById('hba1c').value);
+        const imc = parseFloat(document.getElementById('imc').value);
+        const tipoDm = document.getElementById('tipo_dm').value;
+        const insulinaPrevia = document.getElementById('insulina_previa').value;
+        const corticoides = document.getElementById('corticoides').checked;
+        const sepsis = document.getElementById('sepsis').checked;
+        const ercAvanzada = document.getElementById('erc_avanzada').checked;
+        
+        let perfil = '';
+        let esquema = 'Correccional (Vigente)';
+        let dosisInicial = '';
+        let dosisIC = 0;
+
+        document.getElementById('resultado').style.display = 'block';
+
+        // --- 2. Lógica de Esquema Obligatorio/Exclusión (Basal + Bolo) ---
+
+        if (tipoDm === 'si') {
+            perfil = 'DM1';
+            esquema = 'Basal + Bolo (Obligatorio)';
+            [cite_start]dosisInicial = `Iniciar con ${Math.round(0.3 * peso)} a ${Math.round(0.6 * peso)} UI/día total (50% basal, 50% bolo)[cite: 56].`;
+        } else if (insulinaPrevia === 'alto') {
+            perfil = 'Uso Previo de Insulina (Resistente/Bolo)';
+            [cite_start]esquema = 'Basal + Bolo (DM2 con uso previo de ≥2 dosis/día) [cite: 52]';
+            [cite_start]dosisInicial = `Iniciar con ${Math.round(0.7 * 0.3 * peso)} a ${Math.round(0.7 * 0.6 * peso)} UI/día total (70% de dosis previa)[cite: 57].`;
+        } else if (glicemiaIngreso < 140) {
+            // Criterio NO CUBIERTO por el protocolo para tratamiento activo
+            perfil = 'No aplica';
+            esquema = 'Monitoreo Estricto (Glicemia <140 mg/dL)';
+            [cite_start]dosisInicial = 'Reevaluar si glicemia ≥140 mg/dL en dos tomas separadas[cite: 4, 326].';
+        } else {
+            // --- 3. Determinación del Perfil (Si inicia con Correccional) ---
+
+            const isSensibleMayor = glicemiaIngreso >= 140 && glicemiaIngreso <= 179 && hba1c < 7;
+            const isSensibleMenor = imc < 22 || ercAvanzada; // Simplificación de criterios menores: caquexia/ERC avanzada
+            
+            const isResistenteMayor = glicemiaIngreso >= 250 || hba1c >= 9 || corticoides || sepsis;
+            const isResistenteMenor = imc >= 30; // Simplificación
+            
+            if (isSensibleMayor || isSensibleMenor) {
+                perfil = 'Insulinosensible';
+                // Lógica de corrección para Sensible
+                if (glicemiaIngreso >= 180 && glicemiaIngreso <= 199) dosisIC = 2; [cite_start]// [cite: 280]
+                else if (glicemiaIngreso >= 220 && glicemiaIngreso <= 249) dosisIC = 4; [cite_start]// [cite: 280]
+                else if (glicemiaIngreso >= 250) dosisIC = 6; [cite_start]// [cite: 280]
+            } else if (isResistenteMayor || isResistenteMenor) {
+                perfil = 'Insulinoresistente';
+                // Lógica de corrección para Resistente
+                if (glicemiaIngreso >= 180 && glicemiaIngreso <= 219) dosisIC = 6; [cite_start]// [cite: 285]
+                else if (glicemiaIngreso >= 250 && glicemiaIngreso <= 299) dosisIC = 10; [cite_start]// [cite: 285]
+                else if (glicemiaIngreso >= 350) dosisIC = 14; [cite_start]// [cite: 285]
+            } else {
+                perfil = 'Intermedio';
+                // Lógica de corrección para Intermedio
+                if (glicemiaIngreso >= 140 && glicemiaIngreso <= 179) dosisIC = 2; [cite_start]// [cite: 283]
+                else if (glicemiaIngreso >= 180 && glicemiaIngreso <= 219) dosisIC = 4; [cite_start]// [cite: 283]
+                else if (glicemiaIngreso >= 300 && glicemiaIngreso <= 349) dosisIC = 8; [cite_start]// [cite: 283]
+                else if (glicemiaIngreso >= 350) dosisIC = 10; [cite_start]// [cite: 283]
+            }
+
+            esquema = 'Correccional (Vigente)';
+            dosisInicial = `Insulina Cristalina (IC) ${dosisIC} UI SC según Glicemia preprandial. Dosis de corrección calculada para HGT ${glicemiaIngreso} mg/dL.`;
+
+            // Nota: Este paso solo calcula la dosis en el momento. La progresión a Basal + Correccional
+            [cite_start]// (si requiere >2 correcciones/día o Glicemia Ayuno >180 mg/dL [cite: 36, 40])
+            // debe evaluarse continuamente por el clínico.
+        }
+
+        // --- 4. Mostrar Resultados ---
+        document.getElementById('perfil_resultado').textContent = perfil;
+        document.getElementById('esquema_resultado').textContent = esquema;
+        document.getElementById('dosis_resultado').innerHTML = dosisInicial;
+    }
+</script>
+</body>
+</html>
